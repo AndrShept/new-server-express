@@ -1,0 +1,14 @@
+{
+    "compilerOptions": {
+      "target": "ES6",
+      "module": "NodeNext",
+      "rootDir": "./src",
+      "outDir": "./dist",
+      "strict": true,
+      "esModuleInterop": true,
+
+    },
+    "include": ["src/**/*", "prisma"],
+    "exclude": ["node_modules"]
+  }
+  

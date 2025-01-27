@@ -1,0 +1,577 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+enum NotificationType {
+  message
+  like
+  comment
+  post
+  follower
+  photo
+}
+
+model User {
+  id                    String         @id @default(auto()) @map("_id") @db.ObjectId
+  email                 String         @unique
+  password              String
+  username              String         @unique
+  avatarUrl             String?
+  dateOfBirth           DateTime?
+  bio                   String?
+  location              String?
+  isOnline              Boolean        @default(false)
+  posts                 Post[]
+  likes                 Like[]
+  comments              Comment[]
+  followers             Follows[]      @relation("following")
+  following             Follows[]      @relation("follower")
+  conversationsSent     Conversation[] @relation("sender")
+  conversationsReceived Conversation[] @relation("receiver")
+  message               Message[]
+  favoritePosts         FavoritePost[]
+  viewPost              View[]
+  notification          Notification[] @relation("author")
+  notificationReceiver  Notification[] @relation("receiver")
+  photos                Photo[]
+  hero                  Hero[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("users")
+}
+
+model Hero {
+  id        String  @id @default(auto()) @map("_id") @db.ObjectId
+  avatarUrl String
+  name      String  @unique
+  level     Int     @default(1)
+  gold      Float   @default(0)
+  premCoin  Int     @default(0)
+  isBattle  Boolean @default(false)
+  isDungeon Boolean @default(false)
+  health    Int     @default(0)
+  mana      Int     @default(0)
+
+  inventorySlots Int @default(40)
+
+  currentExperience Int @default(0)
+  maxExperience     Int @default(0)
+
+  statsPoints     Int @default(10)
+  freeStatsPoints Int @default(0)
+
+  baseStats   BaseStats? @relation(fields: [baseStatsId], references: [id])
+  baseStatsId String?    @db.ObjectId
+
+  modifier   Modifier? @relation(fields: [modifierId], references: [id])
+  modifierId String?   @db.ObjectId
+
+  user   User?   @relation(fields: [userId], references: [id])
+  userId String? @db.ObjectId
+
+  buffs           Buff[]
+  inventorys      InventoryItem[]
+  equipments      Equipment[]
+  dungeonSessions DungeonSession[]
+  dungeonHero     DungeonHero[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  Tile      Tile[]
+
+  @@map("heroes")
+}
+
+model BaseStats {
+  id           String @id @default(auto()) @map("_id") @db.ObjectId
+  strength     Int    @default(10)
+  dexterity    Int    @default(10)
+  intelligence Int    @default(10)
+  constitution Int    @default(10)
+  luck         Int    @default(5)
+  Hero         Hero[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("base-stats")
+}
+
+model GameItem {
+  id   String @id @default(auto()) @map("_id") @db.ObjectId
+  name String
+
+  price      Int?           @default(0)
+  type       ItemType
+  slot       EquipmentSlot?
+  weaponType WeaponType?
+  rarity     RarityType     @default(COMMON)
+  tag        ItemTag
+  imageUrl   String
+
+  inventory InventoryItem[]
+  buffs     Buff[]
+
+  modifier   Modifier? @relation(fields: [modifierId], references: [id])
+  modifierId String?   @db.ObjectId
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("game-items")
+}
+
+model Equipment {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+
+  hero   Hero?  @relation(fields: [heroId], references: [id], onDelete: Cascade)
+  heroId String @db.ObjectId
+
+  inventoryItem   InventoryItem? @relation(fields: [inventoryItemId], references: [id])
+  inventoryItemId String         @db.ObjectId
+
+  isEquipped    Boolean @default(true)
+  isCanEquipped Boolean @default(false)
+
+  slot EquipmentSlot
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("equipments")
+}
+
+model InventoryItem {
+  id         String    @id @default(auto()) @map("_id") @db.ObjectId
+  quantity   Int?      @default(1)
+  hero       Hero?     @relation(fields: [heroId], references: [id], onDelete: Cascade)
+  heroId     String    @db.ObjectId
+  gameItem   GameItem? @relation(fields: [gameItemId], references: [id])
+  gameItemId String    @db.ObjectId
+
+  equipments Equipment[]
+
+  isEquipped    Boolean @default(false)
+  isCanEquipped Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("inventory-items")
+}
+
+model Modifier {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+
+  minDamage Int?
+  maxDamage Int?
+
+  strength     Int?
+  dexterity    Int?
+  intelligence Int?
+  constitution Int?
+  luck         Int?
+
+  maxHealth Int?
+  maxMana   Int?
+
+  manaRegeneration   Int?
+  healthRegeneration Int?
+
+  armor            Int?
+  magicResistances Int?
+  evasion          Int?
+
+  spellDamage           Int?
+  spellDamageCritPower  Int?
+  spellDamageCritChance Int?
+
+  meleeDamage           Int?
+  meleeDamageCritPower  Int?
+  meleeDamageCritChance Int?
+
+  duration Int?
+
+  buffs     Buff[]
+  gameItems GameItem[]
+  hero      Hero[]
+  monster   Monster[]
+
+  @@map("modifiers")
+}
+
+model Buff {
+  id            String    @id @default(auto()) @map("_id") @db.ObjectId
+  name          String
+  imageUrl      String
+  duration      Int
+  timeRemaining Int       @default(0)
+  modifier      Modifier? @relation(fields: [modifierId], references: [id], onDelete: Cascade)
+  modifierId    String    @db.ObjectId
+
+  hero   Hero?  @relation(fields: [heroId], references: [id], onDelete: Cascade)
+  heroId String @db.ObjectId
+
+  gameItem   GameItem? @relation(fields: [gameItemId], references: [id])
+  gameItemId String?   @db.ObjectId
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("buffs")
+}
+
+model Dungeon {
+  id          String @id @default(auto()) @map("_id") @db.ObjectId
+  name        String
+  imageUrl    String
+  description String
+  duration    Int
+
+  sessions DungeonSession[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("dungeons")
+}
+
+model DungeonSession {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+
+  status     Status
+  difficulty Difficulty
+  duration   Int
+  tileSize   Int @default(0)
+  mapWidth   Int @default(0)
+  mapHeight  Int @default(0)
+  endTime    DateTime?
+
+  dungeon   Dungeon? @relation(fields: [dungeonId], references: [id])
+  dungeonId String   @db.ObjectId
+
+  hero   Hero?  @relation(fields: [heroId], references: [id])
+  heroId String @db.ObjectId
+
+  tiles         Tile[]
+  dungeonHeroes DungeonHero[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("dungeon-sessions")
+}
+
+model Tile {
+  id       String  @id @default(auto()) @map("_id") @db.ObjectId
+  gid      Int
+  height   Int
+  width    Int
+  name     TileType
+  rotation Int     @default(0)
+  type     String  @default("")
+  visible  Boolean @default(true)
+  x        Int
+  y        Int
+
+  hero   Hero?   @relation(fields: [heroId], references: [id])
+  heroId String? @db.ObjectId
+
+  monster   Monster? @relation(fields: [monsterId], references: [id])
+  monsterId String?  @db.ObjectId
+
+  dungeonSession   DungeonSession? @relation(fields: [dungeonSessionId], references: [id])
+  dungeonSessionId String?         @db.ObjectId
+
+  @@map("tiles")
+}
+
+model DungeonHero {
+  id    String @id @default(auto()) @map("_id") @db.ObjectId
+  death Int    @default(0)
+  x     Int    @default(0)
+  y     Int    @default(0)
+
+  hero   Hero?  @relation(fields: [heroId], references: [id])
+  heroId String @db.ObjectId
+
+  dungeonSession   DungeonSession? @relation(fields: [dungeonSessionId], references: [id])
+  dungeonSessionId String          @db.ObjectId
+
+  createdAt DateTime @default(now())
+
+  @@map("dungeon-heroes")
+}
+
+model Monster {
+  id       String @id @default(auto()) @map("_id") @db.ObjectId
+  name     String
+  imageUrl String
+  health   Int
+  mana     Int
+
+  modifier   Modifier @relation(fields: [modifierId], references: [id])
+  modifierId String   @db.ObjectId
+
+  rarity RarityType
+
+  tiles Tile[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("monsters")
+}
+
+enum Status {
+  INPROGRESS
+  COMPLETED
+  FAILED
+}
+enum TileType {
+  wall
+  hero 
+  monster
+  chest 
+  loot 
+}
+
+enum Difficulty {
+  EASY
+  NORMAL
+  HARD
+}
+
+enum RarityType {
+  COMMON
+  MAGIC
+  EPIC
+  RARE
+  LEGENDARY
+}
+
+enum EquipmentSlot {
+  RIGHT_HAND
+  LEFT_HAND
+  HELMET
+  BREASTPLATE
+  LEGS
+  SHOES
+  AMULET
+  RING_LEFT
+  RING_RIGHT
+  BELT
+}
+
+enum ItemType {
+  POTION
+  BOOK
+  DAGGER
+  SWORD
+  AXE
+  STAFF
+  BREASTPLATE
+  BELT
+  SHOES
+  HELMET
+  LEGS
+  SHIELD
+  RING
+  AMULET
+  MISC
+}
+
+enum ItemTag {
+  NOVICE
+  ALL
+}
+
+enum WeaponType {
+  ONE_HAND
+  TWO_HAND
+}
+
+model Photo {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+
+  url  String
+  size Int
+  name String
+
+  user   User?   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String? @db.ObjectId
+
+  likes        Like[]
+  comments     Comment[]
+  view         View[]
+  notification Notification[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("photos")
+}
+
+model Notification {
+  id     String           @id @default(auto()) @map("_id") @db.ObjectId
+  type   NotificationType
+  isRead Boolean          @default(false)
+
+  user       User?    @relation("receiver", fields: [userId], references: [id], onDelete: Cascade)
+  userId     String?  @db.ObjectId
+  author     User?    @relation("author", fields: [authorId], references: [id], onDelete: Cascade)
+  authorId   String?  @db.ObjectId
+  post       Post?    @relation(fields: [postId], references: [id], onDelete: Cascade)
+  postId     String?  @db.ObjectId
+  follower   Follows? @relation(fields: [followerId], references: [id], onDelete: Cascade)
+  followerId String?  @db.ObjectId
+  like       Like?    @relation(fields: [likeId], references: [id], onDelete: Cascade)
+  likeId     String?  @db.ObjectId
+  comment    Comment? @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  commentId  String?  @db.ObjectId
+  photo      Photo?   @relation(fields: [photoId], references: [id], onDelete: Cascade)
+  photoId    String?  @db.ObjectId
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("notifications")
+}
+
+model FavoritePost {
+  id     String @id @default(auto()) @map("_id") @db.ObjectId
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String @db.ObjectId
+  post   Post   @relation(fields: [postId], references: [id], onDelete: Cascade)
+  postId String @db.ObjectId
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("favoritePosts")
+}
+
+model Conversation {
+  id           String    @id @default(auto()) @map("_id") @db.ObjectId
+  messages     Message[]
+  senderUser   User      @relation("sender", fields: [senderId], references: [id], onDelete: Cascade)
+  receiverUser User      @relation("receiver", fields: [receiverId], references: [id], onDelete: Cascade)
+  senderId     String    @db.ObjectId
+  receiverId   String    @db.ObjectId
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("conversations")
+}
+
+model Message {
+  id             String        @id @default(auto()) @map("_id") @db.ObjectId
+  content        String
+  imageUrl       String?
+  conversation   Conversation? @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  author         User?         @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  isRead         Boolean       @default(false)
+  conversationId String        @db.ObjectId
+  authorId       String        @db.ObjectId
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("messages")
+}
+
+model Follows {
+  id          String @id @default(auto()) @map("_id") @db.ObjectId
+  follower    User   @relation("follower", fields: [followerId], references: [id], onDelete: Cascade)
+  followerId  String @db.ObjectId
+  following   User   @relation("following", fields: [followingId], references: [id], onDelete: Cascade)
+  followingId String @db.ObjectId
+
+  notifications Notification[]
+
+  @@map("follows")
+}
+
+model Post {
+  id           String         @id @default(auto()) @map("_id") @db.ObjectId
+  content      String
+  imageUrl     String?
+  videoUrl     String?
+  author       User           @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  authorId     String         @db.ObjectId
+  likes        Like[]
+  comments     Comment[]
+  favoritePost FavoritePost[]
+  view         View[]
+  notification Notification[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("posts")
+}
+
+model View {
+  id     String  @id @default(auto()) @map("_id") @db.ObjectId
+  post   Post?   @relation(fields: [postId], references: [id], onDelete: Cascade)
+  postId String? @db.ObjectId
+  user   User?   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String? @db.ObjectId
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  photo     Photo?   @relation(fields: [photoId], references: [id], onDelete: Cascade)
+  photoId   String?  @db.ObjectId
+
+  @@map("views")
+}
+
+model Like {
+  id            String         @id @default(auto()) @map("_id") @db.ObjectId
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId        String         @db.ObjectId
+  post          Post?          @relation(fields: [postId], references: [id], onDelete: Cascade)
+  postId        String?        @db.ObjectId
+  Comment       Comment?       @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  commentId     String?        @db.ObjectId
+  notifications Notification[]
+  photo         Photo?         @relation(fields: [photoId], references: [id], onDelete: Cascade)
+  photoId       String?        @db.ObjectId
+
+  @@map("likes")
+}
+
+model Comment {
+  id      String @id @default(auto()) @map("_id") @db.ObjectId
+  content String
+
+  author   User?   @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  authorId String? @db.ObjectId
+
+  post   Post?   @relation(fields: [postId], references: [id], onDelete: Cascade)
+  postId String? @db.ObjectId
+
+  photo   Photo?  @relation(fields: [photoId], references: [id], onDelete: Cascade)
+  photoId String? @db.ObjectId
+
+  likes         Like[]
+  notifications Notification[]
+
+  replyId  String?
+  parentId String?
+  reply    Comment?  @relation("ParentChildren", fields: [replyId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  replys   Comment[] @relation("ParentChildren")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("comments")
+}
