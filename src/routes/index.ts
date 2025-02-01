@@ -16,6 +16,8 @@ import { HeroController } from '../controllers/game/hero-controller';
 import { ItemController } from '../controllers/game/item-controller';
 import { DungeonController } from '../controllers/game/dungeon-controller';
 import { getHero } from '../middleware/hero';
+import { validate } from '../middleware/validate';
+import { updateDungeonSessionStatusSchema } from '../dto/dungeon';
 
 export const router = express.Router();
 
@@ -199,6 +201,12 @@ router.delete('/delete-item', authToken, ItemController.deleteItem);
 //DUNGEON
 router.get('/dungeons', authToken, DungeonController.getDungeons);
 router.get(
+  '/dungeons-session-status/:status',
+  authToken,
+  getHero,
+  DungeonController.getAllDungeonsSessionInStatus
+);
+router.get(
   '/dungeons-session/:dungeonSessionId',
   authToken,
   getHero,
@@ -214,5 +222,6 @@ router.put(
   '/dungeons-session-status',
   authToken,
   getHero,
+  validate(updateDungeonSessionStatusSchema),
   DungeonController.updateDungeonSessionStatus
 );

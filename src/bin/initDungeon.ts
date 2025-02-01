@@ -1,87 +1,68 @@
-import { Hero, Tile } from '@prisma/client';
+import { Hero, Prisma, Tile, TileType } from '@prisma/client';
 import { Socket } from 'socket.io';
 import { prisma } from '../utils/prisma';
-import { building2DMap, getMapJson } from './utils';
+import { building2DMap, getMapJson, to2DArray } from './utils';
 import { HeroWithModifier } from '../types';
-
-
+import { buildingMapData } from './buildingMapData';
+import { createHeroTile } from './createHeroTile';
 
 export const initDungeon = async (socket: Socket, hero: HeroWithModifier) => {
   socket.on('dungeon-init', async (dungeonSessionId) => {
-    const dungeonSession = await prisma.dungeonSession.findFirst({
-      where: { heroId: hero.id, status: 'INPROGRESS' },
-      include: { tiles: true },
+//     await prisma.tile.deleteMany({});
+// return
+    const dungeonSession = await prisma.dungeonSession.findUnique({
+      where: {
+        id: dungeonSessionId,
+      },
+      include: {
+        tiles: true,
+      },
     });
-    if (!dungeonSession) return;
-    const jsonMap = getMapJson(dungeonSession.dungeonId);
-    if (!jsonMap) return;
-    const mapObjects = jsonMap.layers[1].objects?.map((tile) => ({
-      ...tile,
-      x: tile.x / jsonMap.tilewidth,
-      y: tile.y / jsonMap.tilewidth - 1,
-    }));
-    const tilewidth = jsonMap.tilewidth;
-
-    if (!dungeonSession.tiles.length) {
-      mapObjects.push({
-        id: Math.random(),
-        gid: 35,
-        height: tilewidth,
-        width: tilewidth,
-        name: 'hero',
-        x: 1,
-        y: 1,
-        hero,
-      });
+    const jsonMap = getMapJson('test');
+    if (!dungeonSession?.tiles.length) {
+      const mapData = buildingMapData(dungeonSessionId, 'test');
 
       await prisma.tile.createMany({
-        data: mapObjects?.map((item) => ({
-          gid: item.gid,
-          height: item.height,
-          width: item.width,
-          name: item.name,
-          x: item.x,
-          y: item.y,
-          heroId: item.hero?.id,
-          dungeonSessionId,
+        data: mapData.map((item) => ({
+          ...item,
+          id: undefined,
         })),
-      });
-      const dungeonMap = building2DMap(mapObjects, jsonMap);
-
-      socket.emit(dungeonSessionId, {
-        dungeonMap,
-        height: jsonMap.height,
-        width: jsonMap.width,
-        tileSize: jsonMap.tilewidth,
-      });
-    }
-
-    if (dungeonSession.tiles.some((item) => item.hero?.id !== hero.id)) {
-      await prisma.tile.create({
-        data: {
-          gid: 35,
-          height: tilewidth,
-          width: tilewidth,
-          name: 'hero',
-          x: 1,
-          y: 2,
-          heroId: hero.id,
-        },
       });
     }
 
     const tiles = await prisma.tile.findMany({
-      where: { dungeonSessionId },
-      include: { hero: true, monster: true },
+      where: {
+        dungeonSessionId,
+      },
+      include: {
+        monster: true,
+        hero: true,
+      },
     });
-    const dungeonMap = building2DMap(tiles, jsonMap);
+
     const findHero = tiles.find((tile) => tile.heroId === hero.id);
+    let newHeroTile: Prisma.TileGetPayload<{
+      include: {
+        monster: true;
+        hero: true;
+      };
+    }> | undefined
+    if (!findHero) {
+      newHeroTile = await createHeroTile({
+        dungeonSessionId,
+        heroId: hero.id,
+        tiles,
+        tileheight: jsonMap.tileheight,
+        tilewidth: jsonMap.tilewidth,
+      });
+    }
+
     socket.emit(dungeonSessionId, {
-      dungeonMap,
+      dungeonMap: tiles,
       height: jsonMap.height,
       width: jsonMap.width,
       tileSize: jsonMap.tilewidth,
-      heroPos: { x: findHero?.x, y: findHero?.y },
+      heroPos: { x: findHero?.x ?? newHeroTile!.x, y: findHero?.y ??newHeroTile!.y  },
     });
   });
 };

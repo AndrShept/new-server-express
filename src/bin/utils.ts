@@ -1,7 +1,7 @@
 import { DungeonSession, Modifier, Tile } from '@prisma/client';
 import { prisma } from '../utils/prisma';
 import { HP_MULTIPLIER_COST, MANA_MULTIPLIER_INT } from './constant';
-import { TileMap } from '../types';
+import { TileMap, TileObject } from '../types';
 
 export const userOnline = async (userId: string) => {
   const user = await prisma.user.update({
@@ -235,6 +235,7 @@ export async function addBuffsTimeRemaining(heroId: string) {
 export const getMapJson = (dungeonId: string): TileMap => {
   const dung: { [key: string]: any } = {
     '672cc47ca5a57325eedefbf5': require('../json/Lair of Darkness.json'),
+    'test': require('../json/test-dung.json'),
     '67306f9f2563f8e4e84e52d1': '',
   };
   return dung[dungeonId];
@@ -257,4 +258,11 @@ export const building2DMap = (tiles: Tile[], jsonMap: TileMap) => {
   });
 
   return dungeonMap;
+};
+
+export const to2DArray = (tiles: Tile[], width: number): Tile[][] => {
+  console.log(width)
+  return Array.from({ length: Math.ceil(tiles.length / width) }, (_, i) =>
+    tiles.slice(i * width, i * width + width)
+  );
 };

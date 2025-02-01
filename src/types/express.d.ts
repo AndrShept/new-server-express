@@ -1,11 +1,12 @@
 // types/express.d.ts
 import { Hero } from '@prisma/client';
+import { HeroWithModifier } from '.';
 
 declare global {
   namespace Express {
     interface Request {
       user: { userId: string };
-      hero: Hero;
+      hero: HeroWithModifier;
     }
   }
 }

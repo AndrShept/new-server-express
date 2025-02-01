@@ -26,10 +26,7 @@ export const HeroController = {
     const { id, ...remainingFieldsModifier } = sumModifier as Modifier;
 
     try {
-      const dungeonSessions = await prisma.dungeonSession.findMany({
-        where: { status: 'INPROGRESS', heroId },
-        include: { dungeon: true, dungeonHeroes: true },
-      });
+ 
 
       const hero = await prisma.hero.update({
         where: { id: heroId },
@@ -51,23 +48,11 @@ export const HeroController = {
           },
         },
       });
-      const updatedDungeonSessions = dungeonSessions.map((dungeon) => ({
-        ...dungeon,
-        timeRemaining: calculateTimeRemaining(dungeon),
-      }));
-      if (updatedDungeonSessions[0]?.timeRemaining === 0) {
-        await prisma.dungeonSession.update({
-          where: { id: updatedDungeonSessions[0].id },
-          data: {
-            status: 'FAILED',
-            endTime: new Date().toISOString(),
-          },
-        });
-      }
+
       res.status(200).json({
         ...hero,
         buffs: await addBuffsTimeRemaining(heroId),
-        dungeonSessions: updatedDungeonSessions,
+     
       });
     } catch (error) {
       next(error);

@@ -1,4 +1,4 @@
-import { Hero, Prisma } from '@prisma/client';
+import { Hero, Prisma, TileType } from '@prisma/client';
 
 export interface TileMap {
   compressionlevel: number;
@@ -20,8 +20,8 @@ export interface TileMap {
 
 export interface Layer {
   draworder?: string; // Присутній тільки для "objectgroup"
-  id: number;
-  name: string;
+  id: string ;
+  name: TileType;
   objects: TileObject[];
   data: number[];
   height: number;
@@ -37,14 +37,15 @@ export interface TileObject {
   gid: number;
   height: number;
   id: number;
-  name: string;
-  rotation: number;
-  type: string;
+  name: TileType;
+  rotation?: number;
+  type?: string;
   visible: boolean;
   width: number;
   x: number;
   y: number;
   hero?: Hero | null;
+
 }
 
 export interface Tileset {

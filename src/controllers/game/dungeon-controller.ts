@@ -1,6 +1,8 @@
 import { NextFunction, Request, Response } from 'express';
 import { getMapJson } from '../../bin/utils';
 import { prisma } from '../../utils/prisma';
+import { $Enums, SessionStatus } from '@prisma/client';
+import { updateDungeonSessionStatusDTO } from '../../dto/dungeon';
 
 export const DungeonController = {
   getDungeons: async (req: Request, res: Response, next: NextFunction) => {
@@ -8,6 +10,35 @@ export const DungeonController = {
       const dungeons = await prisma.dungeon.findMany();
 
       res.status(200).json(dungeons);
+    } catch (error) {
+      next(error);
+    }
+  },
+  getAllDungeonsSessionInStatus: async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) => {
+    const heroId = req.hero.id;
+    const { status } = req.params as { status: SessionStatus };
+
+    if (!status) {
+      return res
+        .status(404)
+        .json({ success: false, message: 'session status not found' });
+    }
+    if (!Object.values(SessionStatus).includes(status)) {
+      return res
+        .status(400)
+        .json({ success: false, message: 'Invalid session status' });
+    }
+    try {
+      const dungeonSessions = await prisma.dungeonSession.findMany({
+        where: { status, heroId },
+        include: { dungeon: true, dungeonHeroes: true },
+      });
+
+      res.status(200).json(dungeonSessions);
     } catch (error) {
       next(error);
     }
@@ -93,11 +124,12 @@ export const DungeonController = {
     next: NextFunction
   ) => {
     const heroId = req.hero.id;
-    const { status, dungeonSessionId } = req.body;
+    const { dungeonSessionId, status } = updateDungeonSessionStatusDTO.parse(
+      req.body
+    );
 
-    if (!heroId) {
-      return res.status(404).json('HeroId not found');
-    }
+
+
     if (!status) {
       return res.status(404).json('status not found');
     }
@@ -105,12 +137,12 @@ export const DungeonController = {
       return res.status(404).json('dungeonSessionId not found');
     }
     try {
-      const dungeons = await prisma.dungeonSession.update({
+      const dungeonSession = await prisma.dungeonSession.update({
         where: { id: dungeonSessionId },
-        data: { status, endTime: new Date().toISOString() },
+        data: { status : status as SessionStatus, endTime: new Date().toISOString() },
       });
 
-      res.status(200).json(dungeons);
+      res.status(200).json(dungeonSession);
     } catch (error) {
       next(error);
     }
