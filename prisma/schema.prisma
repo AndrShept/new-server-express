@@ -249,9 +249,9 @@ model DungeonSession {
   status     SessionStatus
   difficulty Difficulty
   duration   Int
-  tileSize   Int @default(0)
-  mapWidth   Int @default(0)
-  mapHeight  Int @default(0)
+  tileSize   Int           @default(0)
+  mapWidth   Int           @default(0)
+  mapHeight  Int           @default(0)
   endTime    DateTime?
 
   dungeon   Dungeon? @relation(fields: [dungeonId], references: [id])
@@ -270,7 +270,7 @@ model DungeonSession {
 }
 
 model Tile {
-  id       String  @id @default(auto()) @map("_id") @db.ObjectId
+  id       String   @id @default(auto()) @map("_id") @db.ObjectId
   gid      Int
   height   Int
   width    Int
@@ -281,6 +281,9 @@ model Tile {
   x        Int
   y        Int
 
+  object Tile?   @relation("tile", fields: [objectId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  objectId String? @db.ObjectId
+
   hero   Hero?   @relation(fields: [heroId], references: [id])
   heroId String? @db.ObjectId
 
@@ -289,6 +292,7 @@ model Tile {
 
   dungeonSession   DungeonSession? @relation(fields: [dungeonSessionId], references: [id])
   dungeonSessionId String?         @db.ObjectId
+  Tile             Tile[]          @relation("tile")
 
   @@map("tiles")
 }
@@ -330,17 +334,18 @@ model Monster {
   @@map("monsters")
 }
 
- enum SessionStatus {
+enum SessionStatus {
   INPROGRESS
   COMPLETED
   FAILED
 }
+
 enum TileType {
   wall
-  hero 
+  hero
   monster
-  chest 
-  loot 
+  chest
+  loot
   decor
   object
   ground

@@ -16,8 +16,10 @@ export const createHeroTile = async ({
   tileheight,
   tilewidth,
 }: ICreateHeroTile) => {
-  const findClearTile = tiles.find((tile) => tile.name === TileType.ground);
-  if (!findClearTile) return;
+  const findClearTile = tiles.find(
+    (tile) => tile.name === 'ground' && !tile.objectId
+  );
+  console.log('@@@', findClearTile);
   const heroTile = await prisma.tile.create({
     data: {
       dungeonSessionId,
@@ -26,14 +28,15 @@ export const createHeroTile = async ({
       gid: 0,
       height: tileheight,
       width: tilewidth,
-      x: findClearTile.x,
-      y: findClearTile.x,
+      x: findClearTile?.x ?? 4,
+      y: findClearTile?.y ?? 4,
     },
     include: {
       monster: true,
       hero: true,
     },
   });
+
   tiles.push(heroTile);
   return heroTile;
 };

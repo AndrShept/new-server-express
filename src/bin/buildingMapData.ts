@@ -1,6 +1,9 @@
-import { Tile } from '@prisma/client';
+import { Tile, TileType } from '@prisma/client';
 import { Layer } from '../types';
 import { getMapJson } from './utils';
+import { prisma } from '../utils/prisma';
+import { ObjectId } from 'bson';
+import { createIdBson } from './createId';
 
 export const getLayerObject = (
   layer: Layer | undefined,
@@ -11,10 +14,12 @@ export const getLayerObject = (
   if (layer?.name === 'object') {
     return layer.objects.map((object) => ({
       ...object,
-
+      id: createIdBson(),
+      dungeonSessionId,
       gid: object.gid - 1,
-      x: object.x / object.width ,
-      y: object.x / object.height,
+      x: object.x / object.width,
+      y: object.y / object.height - 1,
+      name: object.name,
     }));
   }
 
@@ -28,24 +33,24 @@ export const getLayerObject = (
         width: tileWidth,
         name: layer.name,
 
-        x: (idx ) % layer.width!,
-        y: idx / layer.height,
+        x: idx % layer.width!,
+        y: Math.floor(idx / layer.height),
       };
     })
     .filter((item) => item) as Tile[];
 };
 
-export const buildingMapData = (
+export const buildingMapData = async (
   dungeonSessionId: string,
   dungeonId: string
 ) => {
   const testMap = getMapJson(dungeonId);
   const findObjects = testMap.layers.find((item) => item.name === 'object');
-  const decorLayer = testMap.layers.find((item) => item.name === 'decor');
+  const findDecor = testMap.layers.find((item) => item.name === 'decor');
   const findGround = testMap.layers.find((item) => item.name === 'ground');
   const findWall = testMap.layers.find((item) => item.name === 'wall');
   const dataDecors = getLayerObject(
-    decorLayer,
+    findDecor,
     dungeonSessionId,
     testMap.tilewidth,
     testMap.tileheight
@@ -69,5 +74,25 @@ export const buildingMapData = (
     testMap.tileheight
   );
 
-  return [...dataGrounds, ...dataObjects, ...dataDecors, ...dataWalls];
+  await prisma.tile.createMany({
+    data: dataObjects,
+  });
+
+  const newArray = dataGrounds.map((tile) => {
+    const findObject = dataObjects.find(
+      (object) => tile.x === object.x && tile.y === object.y
+    );
+
+    if (findObject) {
+      return {
+        ...tile,
+        objectId: findObject.id,
+      };
+    }
+    return tile as Tile;
+  });
+
+  await prisma.tile.createMany({
+    data: [...newArray, ...dataDecors],
+  });
 };

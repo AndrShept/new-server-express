@@ -5,11 +5,11 @@ import { building2DMap, getMapJson, to2DArray } from './utils';
 import { HeroWithModifier } from '../types';
 import { buildingMapData } from './buildingMapData';
 import { createHeroTile } from './createHeroTile';
+import { deleteAllTiles } from './deleteAllTiles';
 
 export const initDungeon = async (socket: Socket, hero: HeroWithModifier) => {
   socket.on('dungeon-init', async (dungeonSessionId) => {
-//     await prisma.tile.deleteMany({});
-// return
+    // await deleteAllTiles()
     const dungeonSession = await prisma.dungeonSession.findUnique({
       where: {
         id: dungeonSessionId,
@@ -20,33 +20,29 @@ export const initDungeon = async (socket: Socket, hero: HeroWithModifier) => {
     });
     const jsonMap = getMapJson('test');
     if (!dungeonSession?.tiles.length) {
-      const mapData = buildingMapData(dungeonSessionId, 'test');
-
-      await prisma.tile.createMany({
-        data: mapData.map((item) => ({
-          ...item,
-          id: undefined,
-        })),
-      });
+      await buildingMapData(dungeonSessionId, 'test');
     }
 
     const tiles = await prisma.tile.findMany({
       where: {
         dungeonSessionId,
+        name: { in: ['ground', 'decor'] },
       },
       include: {
         monster: true,
         hero: true,
+        object: true,
       },
     });
-
     const findHero = tiles.find((tile) => tile.heroId === hero.id);
-    let newHeroTile: Prisma.TileGetPayload<{
-      include: {
-        monster: true;
-        hero: true;
-      };
-    }> | undefined
+    let newHeroTile:
+      | Prisma.TileGetPayload<{
+          include: {
+            monster: true;
+            hero: true;
+          };
+        }>
+      | undefined;
     if (!findHero) {
       newHeroTile = await createHeroTile({
         dungeonSessionId,
@@ -56,13 +52,15 @@ export const initDungeon = async (socket: Socket, hero: HeroWithModifier) => {
         tilewidth: jsonMap.tilewidth,
       });
     }
-
     socket.emit(dungeonSessionId, {
       dungeonMap: tiles,
       height: jsonMap.height,
       width: jsonMap.width,
       tileSize: jsonMap.tilewidth,
-      heroPos: { x: findHero?.x ?? newHeroTile!.x, y: findHero?.y ??newHeroTile!.y  },
+      heroPos: {
+        x: findHero?.x ?? newHeroTile!.x,
+        y: findHero?.y ?? newHeroTile!.y,
+      },
     });
   });
 };

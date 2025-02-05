@@ -1,16 +1,20 @@
 import { Socket } from 'socket.io';
 import { prisma } from '../utils/prisma';
-import { building2DMap, getMapJson } from './utils';
 import { Hero } from '@prisma/client';
 
-
-export const moveHero = (socket:Socket, hero:Hero) => {
-  
-  socket.on(`move-hero-${hero.id}`, async (data:any) => {
+export const moveHero = (socket: Socket, hero: Hero) => {
+  socket.on(`move-hero-${hero.id}`, async (data: any) => {
     const { dungeonSessionId, ...heroPos } = data;
-    const isTileBlocked = await prisma.tile.findFirst({
-      where: { dungeonSessionId, x: heroPos.x, y: heroPos.y },
+    const findTile = await prisma.tile.findFirst({
+      where: {
+        dungeonSessionId,
+        x: heroPos.x,
+        y: heroPos.y,
+        name: { not: 'decor' },
+      },
     });
+    const isTileBlocked =
+      findTile?.objectId || findTile?.heroId || findTile?.monsterId;
     if (isTileBlocked) {
       socket.emit(`move-hero-${hero.id}`, {
         message: 'Tile is busy. You cannot move in this direction.',
@@ -19,29 +23,40 @@ export const moveHero = (socket:Socket, hero:Hero) => {
       return;
     }
     // console.log('isTileBlocked',isTileBlocked);
-    const dungeonSession = await prisma.dungeonSession.findUnique({
-      where: { id: dungeonSessionId },
-    });
-    await prisma.tile.updateMany({
-      where: { heroId: hero.id, dungeonSessionId },
-      data: { x: heroPos.x, y: heroPos.y },
-    });
-    const jsonMap = getMapJson(dungeonSession!.dungeonId);
 
-    const newTiles = await prisma.tile.findMany({
-      where: { dungeonSessionId },
-      include: { hero: true, monster: true },
+    const currentTile = await prisma.tile.findFirst({
+      where: {
+        heroId: hero.id,
+        dungeonSessionId,
+      },
     });
-    const findHero = newTiles.find((tile) => tile.heroId === hero.id);
-    const newMap = building2DMap(newTiles, jsonMap);
-    const dungeonMap = {
-      dungeonMap: newMap,
-      height: jsonMap.height,
-      width: jsonMap.width,
-      tileSize: jsonMap.tilewidth,
-      heroPos: { y: findHero?.y, x: findHero?.x },
-    };
 
-    socket.emit(dungeonSessionId, dungeonMap);
+    if (!currentTile) return;
+    const newHeroPos = { ...heroPos };
+    console.log(newHeroPos);
+
+    const updatedTiles = await prisma.$transaction([
+      prisma.tile.update({
+        where: { dungeonSessionId, id: currentTile.id },
+        data: { heroId: null },
+        include: {
+          hero: true,
+          object: true,
+        },
+      }),
+      prisma.tile.update({
+        where: { dungeonSessionId, id: findTile?.id },
+        data: { heroId: hero.id, x: newHeroPos.x, y: newHeroPos.y },
+        include: {
+          hero: true,
+          object: true,
+        },
+      }),
+    ]);
+
+    socket.emit(`move-hero-${dungeonSessionId}`, {
+      newTiles: updatedTiles,
+      heroPos: { x: newHeroPos.x, y: newHeroPos.y },
+    });
   });
 };
