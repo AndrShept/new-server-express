@@ -20,7 +20,7 @@ export interface TileMap {
 
 export interface Layer {
   draworder?: string; // Присутній тільки для "objectgroup"
-  id: string ;
+  id: string;
   name: TileType;
   objects: TileObject[];
   data: number[];
@@ -45,7 +45,6 @@ export interface TileObject {
   x: number;
   y: number;
   hero?: Hero | null;
-
 }
 
 export interface Tileset {
@@ -73,5 +72,18 @@ export type PhotoWithRelations = Prisma.PhotoGetPayload<{
     comments: true;
     likes: true;
     _count: { select: { view: true; comments: true; likes: true } };
+  };
+}>;
+
+export type TileWithObject = Prisma.TileGetPayload<{
+  include: {
+    object: true;
+  };
+}>;
+export type TileWithEntities = Prisma.TileGetPayload<{
+  include: {
+    hero: true;
+    object: true;
+    monster: true;
   };
 }>;

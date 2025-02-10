@@ -1,5 +1,6 @@
 import { Tile, TileType } from '@prisma/client';
 import { prisma } from '../utils/prisma';
+import { getRandomValue } from './utils';
 
 interface ICreateHeroTile {
   tiles: Tile[];
@@ -17,7 +18,12 @@ export const createHeroTile = async ({
   tilewidth,
 }: ICreateHeroTile) => {
   const findClearTile = tiles.find(
-    (tile) => tile.name === 'ground' && !tile.objectId
+    (tile) =>
+      tile.name === 'ground' &&
+      !tile.objectId &&
+      !tile.heroId &&
+      tile.y >= getRandomValue(1, 3) &&
+      tile.x >= getRandomValue(1, 3)
   );
   console.log('@@@', findClearTile);
   const heroTile = await prisma.tile.create({

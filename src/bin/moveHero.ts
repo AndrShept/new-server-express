@@ -22,7 +22,14 @@ export const moveHero = (socket: Socket, hero: Hero) => {
       });
       return;
     }
-    // console.log('isTileBlocked',isTileBlocked);
+    const isValidMove = (
+      oldX: number,
+      oldY: number,
+      newX: number,
+      newY: number
+    ): boolean => {
+      return Math.abs(oldX - newX) >= 2 || Math.abs(oldY - newY) >= 2;
+    };
 
     const currentTile = await prisma.tile.findFirst({
       where: {
@@ -32,8 +39,21 @@ export const moveHero = (socket: Socket, hero: Hero) => {
     });
 
     if (!currentTile) return;
+    if (
+      isValidMove(
+        currentTile.x,
+        currentTile.y,
+        findTile?.x ?? 0,
+        findTile?.y ?? 0
+      )
+    ) {
+      socket.emit(`move-hero-${hero.id}`, {
+        message: ' You cannot move in this direction.',
+        success: false,
+      });
+      return;
+    }
     const newHeroPos = { ...heroPos };
-    console.log(newHeroPos);
 
     const updatedTiles = await prisma.$transaction([
       prisma.tile.update({

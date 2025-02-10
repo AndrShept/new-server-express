@@ -1,9 +1,8 @@
-import { Tile, TileType } from '@prisma/client';
+import { Prisma, Tile } from '@prisma/client';
 import { Layer } from '../types';
-import { getMapJson } from './utils';
+import { getMapJson, getRandomValue, rand } from './utils';
 import { prisma } from '../utils/prisma';
-import { ObjectId } from 'bson';
-import { createIdBson } from './createId';
+import { getIdBson } from './getIdBson';
 
 export const getLayerObject = (
   layer: Layer | undefined,
@@ -14,7 +13,7 @@ export const getLayerObject = (
   if (layer?.name === 'object') {
     return layer.objects.map((object) => ({
       ...object,
-      id: createIdBson(),
+      id: getIdBson(),
       dungeonSessionId,
       gid: object.gid - 1,
       x: object.x / object.width,
@@ -28,16 +27,16 @@ export const getLayerObject = (
       if (item === 0) return null;
       return {
         dungeonSessionId,
+        id: getIdBson(),
         gid: item - 1,
         height: tileHeight,
         width: tileWidth,
         name: layer.name,
-
         x: idx % layer.width!,
         y: Math.floor(idx / layer.height),
       };
     })
-    .filter((item) => item) as Tile[];
+    .filter(Boolean) as Tile[];
 };
 
 export const buildingMapData = async (
@@ -73,26 +72,35 @@ export const buildingMapData = async (
     testMap.tilewidth,
     testMap.tileheight
   );
-
+  const tilesData = dataWalls.length
+    ? [...dataObjects, ...dataWalls]
+    : dataObjects;
   await prisma.tile.createMany({
-    data: dataObjects,
+    data: tilesData,
   });
 
-  const newArray = dataGrounds.map((tile) => {
-    const findObject = dataObjects.find(
+
+  const objectsTile = dataGrounds.map((tile) => {
+    const findObject = tilesData.find(
       (object) => tile.x === object.x && tile.y === object.y
     );
+ 
 
-    if (findObject) {
-      return {
-        ...tile,
-        objectId: findObject.id,
-      };
-    }
-    return tile as Tile;
+      if (findObject) {
+        return {
+          ...tile,
+          objectId: findObject.id,
+        }
+
+      }
+    return tile as Tile
+    
   });
-
+  console.time('create-map');
   await prisma.tile.createMany({
-    data: [...newArray, ...dataDecors],
+    data: [...objectsTile, ...dataDecors],
   });
+  console.timeEnd('create-map');
+
+
 };

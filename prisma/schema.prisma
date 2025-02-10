@@ -254,10 +254,10 @@ model DungeonSession {
   mapHeight  Int           @default(0)
   endTime    DateTime?
 
-  dungeon   Dungeon? @relation(fields: [dungeonId], references: [id])
+  dungeon   Dungeon? @relation(fields: [dungeonId], references: [id], onDelete: Cascade)
   dungeonId String   @db.ObjectId
 
-  hero   Hero?  @relation(fields: [heroId], references: [id])
+  hero   Hero?  @relation(fields: [heroId], references: [id], onDelete: Cascade)
   heroId String @db.ObjectId
 
   tiles         Tile[]
@@ -281,16 +281,16 @@ model Tile {
   x        Int
   y        Int
 
-  object Tile?   @relation("tile", fields: [objectId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  object   Tile?   @relation("tile", fields: [objectId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   objectId String? @db.ObjectId
 
-  hero   Hero?   @relation(fields: [heroId], references: [id])
+  hero   Hero?   @relation(fields: [heroId], references: [id], onDelete: SetNull)
   heroId String? @db.ObjectId
 
-  monster   Monster? @relation(fields: [monsterId], references: [id])
+  monster   Monster? @relation(fields: [monsterId], references: [id], onDelete: Cascade)
   monsterId String?  @db.ObjectId
 
-  dungeonSession   DungeonSession? @relation(fields: [dungeonSessionId], references: [id])
+  dungeonSession   DungeonSession? @relation(fields: [dungeonSessionId], references: [id], onDelete: Cascade)
   dungeonSessionId String?         @db.ObjectId
   Tile             Tile[]          @relation("tile")
 
@@ -321,15 +321,15 @@ model Monster {
   health   Int
   mana     Int
 
-  modifier   Modifier @relation(fields: [modifierId], references: [id])
-  modifierId String   @db.ObjectId
+  modifier   Modifier? @relation(fields: [modifierId], references: [id])
+  modifierId String?   @db.ObjectId
 
   rarity RarityType
 
   tiles Tile[]
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime? @default(now())
+  updatedAt DateTime? @updatedAt
 
   @@map("monsters")
 }
