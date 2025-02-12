@@ -1,17 +1,14 @@
-import { Hero, Prisma, Tile, TileType } from '@prisma/client';
+import {  Prisma  } from '@prisma/client';
 import { Socket } from 'socket.io';
 import { prisma } from '../utils/prisma';
 import { getMapJson } from './utils';
 import { HeroWithModifier } from '../types';
 import { buildingMapData } from './buildingMapData';
 import { createHeroTile } from './createHeroTile';
-import {  newDeleteTiles } from './deleteAllTiles';
 import { buildingMonsterOnMap } from './buildingMonsterOnMap';
 
 export const initDungeon = async (socket: Socket, hero: HeroWithModifier) => {
   socket.on('dungeon-init', async (dungeonSessionId) => {
-    // await deleteAllTiles();
-    await newDeleteTiles();
     const dungeonSession = await prisma.dungeonSession.findUnique({
       where: {
         id: dungeonSessionId,

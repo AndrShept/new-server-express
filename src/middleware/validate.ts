@@ -1,4 +1,4 @@
-import { ZodSchema } from "zod";
+import { ZodSchema, ZodError } from "zod";
 import { Request, Response, NextFunction } from "express";
 
 export const validate =
@@ -11,11 +11,10 @@ export const validate =
         params: req.params,
       });
       next(); 
-    } catch (error:any) {
-      return res.status(400).json({
-        success: false,
-        message: "Validation error",
-        error: error.errors
-      });
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return next(error); // Передаємо помилку в errorHandler
+      }
+      return res.status(500).json({ message: "Unexpected error" });
     }
   };

@@ -18,6 +18,13 @@ import { DungeonController } from '../controllers/game/dungeon-controller';
 import { getHero } from '../middleware/hero';
 import { validate } from '../middleware/validate';
 import { updateDungeonSessionStatusSchema } from '../dto/dungeon';
+import { DungeonPartyController } from '../controllers/game/dungeon-party';
+import {
+  createDungeonPartyHeroDTOSchema,
+  deleteDungeonPartyHeroDTOSchema,
+  getDungeonPartyHeroByTermSchema,
+  getDungeonPartySchema,
+} from '../dto/dungeon-party';
 
 export const router = express.Router();
 
@@ -224,4 +231,34 @@ router.put(
   getHero,
   validate(updateDungeonSessionStatusSchema),
   DungeonController.updateDungeonSessionStatus
+);
+//DUNGEON-PARTY
+router.get(
+  '/dungeons-party/:dungeonSessionId',
+  authToken,
+  getHero,
+  validate(getDungeonPartySchema),
+  DungeonPartyController.getDungeonParty
+);
+router.get(
+  '/dungeons-party-search/:searchTerm',
+  authToken,
+  getHero,
+  validate(getDungeonPartyHeroByTermSchema),
+  DungeonPartyController.getDungeonPartyHeroByTerm
+);
+router.post(
+  '/dungeons-party',
+
+  authToken,
+  getHero,
+  validate(createDungeonPartyHeroDTOSchema),
+  DungeonPartyController.createDungeonPartyHero
+);
+router.delete(
+  '/dungeons-party/:memberId',
+  authToken,
+  getHero,
+  validate(deleteDungeonPartyHeroDTOSchema),
+  DungeonPartyController.deleteDungeonPartyHero
 );

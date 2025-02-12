@@ -28,7 +28,7 @@ app.use(cookieParser());
 app.use(helmet.crossOriginResourcePolicy({ policy: 'cross-origin' }));
 app.use(morgan('dev'));
 app.use('/api', router);
-router.use(errorHandler);
+
 
 export const io = new Server(server, {
   cors: {
@@ -76,7 +76,7 @@ export const s3 = new S3Client({
   },
 });
 
-
+app.use(errorHandler);
 server.listen(PORT, () => {
   console.log(`SERVER RUNNING... PORT: ${PORT}`);
 });

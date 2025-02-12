@@ -80,7 +80,7 @@ model Hero {
   inventorys      InventoryItem[]
   equipments      Equipment[]
   dungeonSessions DungeonSession[]
-  dungeonHero     DungeonHero[]
+  dungeonParty    DungeonParty[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -257,11 +257,11 @@ model DungeonSession {
   dungeon   Dungeon? @relation(fields: [dungeonId], references: [id], onDelete: Cascade)
   dungeonId String   @db.ObjectId
 
-  hero   Hero?  @relation(fields: [heroId], references: [id], onDelete: Cascade)
-  heroId String @db.ObjectId
+  owner   Hero?   @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  ownerId String? @db.ObjectId
 
-  tiles         Tile[]
-  dungeonHeroes DungeonHero[]
+  dungeonParty DungeonParty[]
+  tiles        Tile[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -292,26 +292,30 @@ model Tile {
 
   dungeonSession   DungeonSession? @relation(fields: [dungeonSessionId], references: [id], onDelete: Cascade)
   dungeonSessionId String?         @db.ObjectId
-  Tile             Tile[]          @relation("tile")
+  tile             Tile[]          @relation("tile")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@map("tiles")
 }
 
-model DungeonHero {
+model DungeonParty {
   id    String @id @default(auto()) @map("_id") @db.ObjectId
   death Int    @default(0)
   x     Int    @default(0)
   y     Int    @default(0)
 
-  hero   Hero?  @relation(fields: [heroId], references: [id])
-  heroId String @db.ObjectId
-
   dungeonSession   DungeonSession? @relation(fields: [dungeonSessionId], references: [id])
-  dungeonSessionId String          @db.ObjectId
+  dungeonSessionId String?         @db.ObjectId
+
+  member   Hero?   @relation(fields: [memberId], references: [id])
+  memberId String? @db.ObjectId
 
   createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  @@map("dungeon-heroes")
+  @@map("dungeon-party")
 }
 
 model Monster {
@@ -321,7 +325,7 @@ model Monster {
   health   Int
   mana     Int
 
-  modifier   Modifier? @relation(fields: [modifierId], references: [id])
+  modifier   Modifier? @relation(fields: [modifierId], references: [id], onDelete: Cascade)
   modifierId String?   @db.ObjectId
 
   rarity RarityType
