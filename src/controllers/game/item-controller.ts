@@ -27,10 +27,10 @@ export const ItemController = {
     }
   },
   createItem: async (req: Request, res: Response, next: NextFunction) => {
-    const body = req.body;
-    const { modifier, ...data } = body;
-
     try {
+      const body = req.body;
+      const { modifier, ...data } = body;
+
       const newItem = await prisma.gameItem.create({
         data: {
           ...data,
@@ -45,14 +45,14 @@ export const ItemController = {
     }
   },
   deleteItem: async (req: Request, res: Response, next: NextFunction) => {
-    const body = req.body;
-    const { id } = body;
-
-    if (!id) {
-      return res.status(404).json('id not found');
-    }
-
     try {
+      const body = req.body;
+      const { id } = body;
+
+      if (!id) {
+        return res.status(404).json('id not found');
+      }
+
       await prisma.inventoryItem.delete({
         where: { id },
       });

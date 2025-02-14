@@ -9,12 +9,15 @@ import {
 
 export const DungeonPartyController = {
   getDungeonParty: async (req: Request, res: Response, next: NextFunction) => {
-    const { dungeonSessionId } = getDungeonPartyDTO.parse(req.params);
-
     try {
+      const { dungeonSessionId } = getDungeonPartyDTO.parse(req.params);
+      const heroId = req.hero.id;
       const dungeonParty = await prisma.dungeonParty.findMany({
         where: {
           dungeonSessionId,
+          memberId: {
+            not: heroId,
+          },
         },
         include: {
           member: true,
@@ -31,13 +34,34 @@ export const DungeonPartyController = {
     res: Response,
     next: NextFunction
   ) => {
-    const { searchTerm } = getDungeonPartyHeroByTermDTO.parse(req.params);
     try {
+      const heroId = req.hero.id;
+      const { searchTerm } = getDungeonPartyHeroByTermDTO.parse(req.params);
+      const dungeonSession = await prisma.dungeonSession.findFirst({
+        where: {
+          ownerId: heroId,
+          status: 'INPROGRESS',
+        },
+
+        include: {
+          dungeonParty: {
+            include: {
+              member: true,
+            },
+          },
+        },
+      });
+
       const heroes = await prisma.hero.findMany({
         where: {
           name: {
             startsWith: searchTerm,
             mode: 'insensitive',
+          },
+          id: {
+            notIn: dungeonSession?.dungeonParty.map(
+              (party) => party.memberId ?? ''
+            ),
           },
         },
 
@@ -61,62 +85,62 @@ export const DungeonPartyController = {
     res: Response,
     next: NextFunction
   ) => {
-    const { dungeonSessionId, heroId } = createDungeonPartyHeroDTO.parse(
-      req.body
-    );
-    const selfId = req.hero.id;
-    const dungeonSession = await prisma.dungeonSession.findUnique({
-      where: { id: dungeonSessionId },
-    });
-    if (!dungeonSession) {
-      return res
-        .status(404)
-        .json({ success: false, message: 'dungeonSession not found' });
-    }
-    if (heroId === selfId) {
-      return res.status(400).json({
-        success: false,
-        message: 'You cannot add yourself to the dungeon party.',
+    try {
+      const { dungeonSessionId, heroId } = createDungeonPartyHeroDTO.parse(
+        req.body
+      );
+      const selfId = req.hero.id;
+      const dungeonSession = await prisma.dungeonSession.findUnique({
+        where: { id: dungeonSessionId },
       });
-    }
-    const sessionInProgress = await prisma.dungeonSession.findFirst({
-      where: {
-        ownerId: heroId,
-        status: 'INPROGRESS',
-      },
-    });
-    const memberOnOtherParty = await prisma.dungeonParty.findFirst({
-      where: {
-        memberId: heroId,
-        dungeonSession: {
+      if (!dungeonSession) {
+        return res
+          .status(404)
+          .json({ success: false, message: 'dungeonSession not found' });
+      }
+      if (heroId === selfId) {
+        return res.status(400).json({
+          success: false,
+          message: 'You cannot add yourself to the dungeon party.',
+        });
+      }
+      const sessionInProgress = await prisma.dungeonSession.findFirst({
+        where: {
+          ownerId: heroId,
           status: 'INPROGRESS',
         },
-      },
-    });
-    if (sessionInProgress || memberOnOtherParty) {
-      return res.json({
-        success: false,
-        message:
-          'Hero already have an active dungeon session and cannot join another party.',
       });
-    }
+      const memberOnOtherParty = await prisma.dungeonParty.findFirst({
+        where: {
+          memberId: heroId,
+          dungeonSession: {
+            status: 'INPROGRESS',
+          },
+        },
+      });
+      if (sessionInProgress || memberOnOtherParty) {
+        return res.json({
+          success: false,
+          message:
+            'Hero already have an active dungeon session and cannot join another party.',
+        });
+      }
 
-    const newPartyMembers = await prisma.dungeonParty.create({
-      data: {
-        dungeonSessionId,
-        memberId: heroId,
-      },
-      include: {
-        member: true,
-      },
-    });
+      const newPartyMembers = await prisma.dungeonParty.create({
+        data: {
+          dungeonSessionId,
+          memberId: heroId,
+        },
+        include: {
+          member: true,
+        },
+      });
 
-    res.status(201).json({
-      success: true,
-      message: `You add ${newPartyMembers.member?.name} to party`,
-      data: newPartyMembers,
-    });
-    try {
+      res.status(201).json({
+        success: true,
+        message: `You add ${newPartyMembers.member?.name} to party`,
+        data: newPartyMembers,
+      });
     } catch (error) {
       next(error);
     }
@@ -126,40 +150,41 @@ export const DungeonPartyController = {
     res: Response,
     next: NextFunction
   ) => {
-    const { memberId } = deleteDungeonPartyHeroDTO.parse(req.body);
-    const selfId = req.hero.id;
-    console.log(memberId);
-
-    const findMember = await prisma.dungeonParty.findFirst({
-      where: {
-        memberId,
-      },
-      include: {
-        member: true,
-      },
-    });
-    if (!findMember) {
-      return res
-        .status(404)
-        .json({ success: false, message: 'party member not found' });
-    }
-    if (memberId === selfId) {
-      return res.status(400).json({
-        success: false,
-        message: 'The party leader cannot be removed from the group.',
-      });
-    }
-    await prisma.dungeonParty.deleteMany({
-      where: {
-        memberId,
-      },
-    });
-    res.status(201).json({
-      success: true,
-      message: `member ${findMember.member?.name} removed party`,
-      // data: newPartyMembers,
-    });
     try {
+      const { memberId } = deleteDungeonPartyHeroDTO.parse(req.params);
+      const selfId = req.hero.id;
+
+      const findMember = await prisma.dungeonParty.findFirst({
+        where: {
+          memberId,
+        },
+        include: {
+          member: true,
+        },
+        
+      });
+      if (!findMember) {
+        return res
+          .status(404)
+          .json({ success: false, message: 'party member not found' });
+      }
+      console.log(findMember)
+      if ( findMember.dungeonSession?.ownerId  !==  selfId) {
+        return res.status(400).json({
+          success: false,
+          message: 'The party leader cannot be removed from the group.',
+        });
+      }
+      await prisma.dungeonParty.deleteMany({
+        where: {
+          memberId,
+        },
+      });
+      res.status(201).json({
+        success: true,
+        message: `member ${findMember.member?.name} removed party`,
+        data: findMember,
+      });
     } catch (error) {
       next(error);
     }

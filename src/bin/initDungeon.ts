@@ -17,6 +17,7 @@ export const initDungeon = async (socket: Socket, hero: HeroWithModifier) => {
         tiles: true,
       },
     });
+    socket.join(dungeonSessionId)
     if (!dungeonSession) return;
     const jsonMap = getMapJson('test');
     if (!dungeonSession?.tiles.length) {

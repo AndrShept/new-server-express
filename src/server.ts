@@ -13,6 +13,7 @@ import { getHeroWithModifiers } from './bin/getHeroWithModifiers';
 import { game } from './bin/game';
 import { userOffline } from './bin/utils';
 import { S3Client } from '@aws-sdk/client-s3';
+import { databaseErrorHandler } from './middleware/databaseErrorHandler';
 dotenv.config();
 
 const app = express();
@@ -28,7 +29,8 @@ app.use(cookieParser());
 app.use(helmet.crossOriginResourcePolicy({ policy: 'cross-origin' }));
 app.use(morgan('dev'));
 app.use('/api', router);
-
+app.use(databaseErrorHandler);
+app.use(errorHandler);
 
 export const io = new Server(server, {
   cors: {
@@ -66,8 +68,6 @@ io.on('connection', async (socket: Socket) => {
   });
 });
 
-
-
 export const s3 = new S3Client({
   region: process.env.AWS_BUCKET_REGION as string,
   credentials: {
@@ -76,7 +76,7 @@ export const s3 = new S3Client({
   },
 });
 
-app.use(errorHandler);
+
 server.listen(PORT, () => {
   console.log(`SERVER RUNNING... PORT: ${PORT}`);
 });

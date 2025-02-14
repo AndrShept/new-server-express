@@ -1,6 +1,7 @@
 import { Socket } from 'socket.io';
 import { prisma } from '../utils/prisma';
 import { Hero } from '@prisma/client';
+import { io } from '../server';
 
 export const moveHero = (socket: Socket, hero: Hero) => {
   socket.on(`move-hero-${hero.id}`, async (data: any) => {
@@ -74,9 +75,10 @@ export const moveHero = (socket: Socket, hero: Hero) => {
       }),
     ]);
 
-    socket.emit(`move-hero-${dungeonSessionId}`, {
+    io.in(dungeonSessionId).emit(`move-hero-${dungeonSessionId}`, {
       newTiles: updatedTiles,
       heroPos: { x: newHeroPos.x, y: newHeroPos.y },
     });
+
   });
 };
