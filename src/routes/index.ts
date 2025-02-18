@@ -17,7 +17,7 @@ import { ItemController } from '../controllers/game/item-controller';
 import { DungeonController } from '../controllers/game/dungeon-controller';
 import { getHero } from '../middleware/hero';
 import { validate } from '../middleware/validate';
-import { updateDungeonSessionStatusSchema } from '../dto/dungeon';
+import { getDungeonMapSchema, updateDungeonSessionStatusSchema } from '../dto/dungeon';
 import { DungeonPartyController } from '../controllers/game/dungeon-party';
 import {
   createDungeonPartyHeroDTOSchema,
@@ -232,6 +232,15 @@ router.put(
   validate(updateDungeonSessionStatusSchema),
   DungeonController.updateDungeonSessionStatus
 );
+
+router.get(
+  '/dungeon-map/:dungeonSessionId',
+  authToken,
+  getHero,
+  validate(getDungeonMapSchema),
+  DungeonController.getDungeonMap
+);
+
 //DUNGEON-PARTY
 router.get(
   '/dungeons-party/:dungeonSessionId',
@@ -256,9 +265,11 @@ router.post(
   DungeonPartyController.createDungeonPartyHero
 );
 router.delete(
-  '/dungeons-party/:memberId',
+  '/dungeons-party/:memberId/:dungeonSessionId',
   authToken,
   getHero,
   validate(deleteDungeonPartyHeroDTOSchema),
   DungeonPartyController.deleteDungeonPartyHero
 );
+
+

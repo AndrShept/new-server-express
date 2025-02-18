@@ -1,10 +1,20 @@
 import { NextFunction, Request, Response } from 'express';
 import { getMapJson } from '../../bin/utils';
 import { prisma } from '../../utils/prisma';
-import { SessionStatus } from '@prisma/client';
-import { updateDungeonSessionStatusDTO } from '../../dto/dungeon';
+import { Prisma, SessionStatus, Tile } from '@prisma/client';
+import {
+  getDungeonMapDTO,
+  updateDungeonSessionStatusDTO,
+} from '../../dto/dungeon';
 import { deleteTiles } from '../../bin/deleteTiles';
-import { io } from '../../server';
+import { buildingMapData } from '../../bin/buildingMapData';
+import { buildingMonsterOnMap } from '../../bin/buildingMonsterOnMap';
+import { createHeroTile } from '../../bin/createHeroTile';
+import {
+  socketSendSysMessageToClient,
+  socketUpdateTile,
+} from '../../sockets/dungeon';
+import { SysMessageType } from '../../types';
 
 export const DungeonController = {
   getDungeons: async (req: Request, res: Response, next: NextFunction) => {
@@ -145,6 +155,7 @@ export const DungeonController = {
   ) => {
     try {
       const heroId = req.hero.id;
+      const heroName = req.hero.name;
       const { dungeonSessionId, status } = updateDungeonSessionStatusDTO.parse(
         req.body
       );
@@ -169,14 +180,24 @@ export const DungeonController = {
             heroId,
           },
         });
-        await prisma.tile.update({
-          where: {
-            id: findTile[0].id,
-          },
-          data: {
-            heroId: null,
-          },
-        });
+        if (!!findTile.length) {
+          await prisma.tile.update({
+            where: {
+              id: findTile[0].id,
+            },
+            data: {
+              heroId: null,
+            },
+          });
+          socketUpdateTile(
+            dungeonSessionId,
+            findTile.map((tile) => ({
+              ...tile,
+              heroId: null,
+            }))
+          );
+        }
+
         await prisma.dungeonParty.deleteMany({
           where: {
             dungeonSessionId,
@@ -184,13 +205,11 @@ export const DungeonController = {
           },
         });
 
-        io.to(dungeonSessionId).emit(`move-hero-${dungeonSessionId}`, {
-          newTiles: findTile.map((tile) => ({
-            ...tile,
-            heroId: null,
-          })),
+        socketSendSysMessageToClient(dungeonSessionId, {
+          message: `${heroName} leave the dungeon session`,
+          type: SysMessageType.INFO,
         });
-        console.log(findTile);
+
         return res
           .status(200)
           .json({ success: true, message: 'leave the dungeon session' });
@@ -216,26 +235,74 @@ export const DungeonController = {
       next(error);
     }
   },
-  getDungeonMap: async (
-    req: Request,
-    res: Response,
-    next: NextFunction
-  ) => {
+  getDungeonMap: async (req: Request, res: Response, next: NextFunction) => {
     try {
       const heroId = req.hero.id;
-      const { dungeonSessionId } = updateDungeonSessionStatusDTO.parse(
-        req.body
-      );
-
-      if (!status) {
+      const { dungeonSessionId } = getDungeonMapDTO.parse(req.params);
+      if (!dungeonSessionId) {
         return res.status(404).json('status not found');
       }
-     
-      res.status(200).json(updatedDungeonSession);
+      const partyMember = await prisma.dungeonParty.findFirst({
+        where: {
+          memberId: heroId,
+          dungeonSessionId,
+        },
+      });
+      if (!partyMember) {
+        return res.status(404).json('access denied you not a party members');
+      }
+
+      const dungeonSession = await prisma.dungeonSession.findUnique({
+        where: {
+          id: dungeonSessionId,
+        },
+        include: {
+          tiles: true,
+        },
+      });
+      if (!dungeonSession) return;
+      const jsonMap = getMapJson('test');
+      if (!dungeonSession?.tiles.length) {
+        await buildingMapData(dungeonSessionId, 'test');
+        await buildingMonsterOnMap(dungeonSession);
+        await createHeroTile(dungeonSessionId, heroId);
+      }
+      const findHero = await prisma.tile.findFirst({
+        where: {
+          heroId,
+          dungeonSessionId,
+        },
+      });
+
+      let newHeroTile: Tile;
+      if (!findHero) {
+        newHeroTile = await createHeroTile(dungeonSessionId, heroId);
+        socketUpdateTile(dungeonSessionId, [newHeroTile]);
+      }
+      const tiles = await prisma.tile.findMany({
+        where: {
+          dungeonSessionId,
+          name: { in: ['ground', 'decor', 'object'] },
+        },
+        include: {
+          monster: true,
+          hero: true,
+          object: true,
+        },
+      });
+      const mapData = {
+        dungeonMap: tiles,
+        height: jsonMap.height,
+        width: jsonMap.width,
+        tileSize: jsonMap.tilewidth,
+        heroPos: findHero
+          ? { x: findHero.x, y: findHero.y }
+          : { x: newHeroTile!.x, y: newHeroTile!.y },
+      };
+
+      res.status(200).json(mapData);
     } catch (error) {
       next(error);
     }
   },
-
-
 };

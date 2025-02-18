@@ -87,3 +87,17 @@ export type TileWithEntities = Prisma.TileGetPayload<{
     monster: true;
   };
 }>;
+
+export interface ISysMessages<T = any> {
+  message: string;
+  data?: T | null;
+  type: SysMessageType;
+  success?: boolean;
+  createdAt?: number;
+}
+export enum SysMessageType {
+  'INFO' = 'INFO',
+  'WARNING' = 'WARNING',
+  'ERROR' = 'ERROR',
+  'SUCCESS' = 'SUCCESS',
+}

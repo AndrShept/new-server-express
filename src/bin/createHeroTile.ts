@@ -1,48 +1,29 @@
-import { Tile, TileType } from '@prisma/client';
 import { prisma } from '../utils/prisma';
-import { getRandomValue } from './utils';
+import { rand } from './utils';
 
-interface ICreateHeroTile {
-  tiles: Tile[];
-  dungeonSessionId: string;
-  heroId: string;
-  tileheight: number;
-  tilewidth: number;
-}
-
-export const createHeroTile = async ({
-  tiles,
-  dungeonSessionId,
-  heroId,
-  tileheight,
-  tilewidth,
-}: ICreateHeroTile) => {
-  const findClearTile = tiles.find(
-    (tile) =>
-      tile.name === 'ground' &&
-      !tile.objectId &&
-      !tile.heroId &&
-      tile.y >= getRandomValue(1, 3) &&
-      tile.x >= getRandomValue(1, 3)
-  );
-  console.log('@@@', findClearTile);
-  const heroTile = await prisma.tile.create({
-    data: {
+export const createHeroTile = async (
+  dungeonSessionId: string,
+  heroId: string
+) => {
+  const findClearTile = await prisma.tile.findMany({
+    where: {
       dungeonSessionId,
+      hero: { is: null },
+      object: { is: null },
+      x: { lt: 10 },
+      y: { lte: 5 },
+    },
+    take: 10,
+  });
+  const randomTile = findClearTile[rand(findClearTile.length)];
+  const updatedTile = await prisma.tile.update({
+    where: { id: randomTile.id },
+    data: {
       heroId,
-      name: TileType.hero,
-      gid: 0,
-      height: tileheight,
-      width: tilewidth,
-      x: findClearTile?.x ?? 4,
-      y: findClearTile?.y ?? 4,
     },
     include: {
-      monster: true,
       hero: true,
     },
   });
-
-  tiles.push(heroTile);
-  return heroTile;
+  return updatedTile;
 };

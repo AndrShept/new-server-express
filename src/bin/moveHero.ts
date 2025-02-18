@@ -1,7 +1,8 @@
 import { Socket } from 'socket.io';
 import { prisma } from '../utils/prisma';
 import { Hero } from '@prisma/client';
-import { io } from '../server';
+import { socketMoveHero, socketSendSysMessageToHero } from '../sockets/dungeon';
+import { SysMessageType } from '../types';
 
 export const moveHero = (socket: Socket, hero: Hero) => {
   socket.on(`move-hero-${hero.id}`, async (data: any) => {
@@ -17,9 +18,9 @@ export const moveHero = (socket: Socket, hero: Hero) => {
     const isTileBlocked =
       findTile?.objectId || findTile?.heroId || findTile?.monsterId;
     if (isTileBlocked) {
-      socket.emit(`move-hero-${hero.id}`, {
+      socketSendSysMessageToHero(hero.id, {
         message: 'Tile is busy. You cannot move in this direction.',
-        success: false,
+        type: SysMessageType.ERROR,
       });
       return;
     }
@@ -48,9 +49,9 @@ export const moveHero = (socket: Socket, hero: Hero) => {
         findTile?.y ?? 0
       )
     ) {
-      socket.emit(`move-hero-${hero.id}`, {
-        message: ' You cannot move in this direction.',
-        success: false,
+      socketSendSysMessageToHero(hero.id, {
+        message: 'You cannot move in this direction.',
+        type: SysMessageType.ERROR,
       });
       return;
     }
@@ -75,10 +76,9 @@ export const moveHero = (socket: Socket, hero: Hero) => {
       }),
     ]);
 
-    io.in(dungeonSessionId).emit(`move-hero-${dungeonSessionId}`, {
+    socketMoveHero(dungeonSessionId, {
       newTiles: updatedTiles,
       heroPos: { x: newHeroPos.x, y: newHeroPos.y },
     });
-
   });
 };

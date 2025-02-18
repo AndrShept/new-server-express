@@ -14,12 +14,13 @@ import { game } from './bin/game';
 import { userOffline } from './bin/utils';
 import { S3Client } from '@aws-sdk/client-s3';
 import { databaseErrorHandler } from './middleware/databaseErrorHandler';
-dotenv.config();
+import { messagesSocket } from './bin/messages-socket';
 
 const app = express();
 const server = http.createServer(app);
 const PORT = process.env.PORT || 3000;
 
+dotenv.config();
 app.use(cors());
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
@@ -43,28 +44,16 @@ io.on('connection', async (socket: Socket) => {
   const userId = socket.handshake.auth.userId;
   const username = socket.handshake.headers.username as string;
   console.log(`A user connected ${username}`);
-  // if (userId) {
-  //   userOnline(userId);
-  // }
+
+  app.locals.socket = socket;
   const hero = await getHeroWithModifiers(username);
   if (hero) {
     game(username, socket, hero);
   }
-
-  socket.on('msg', async (msg) => {
-    io.emit(msg.conversationId, msg);
-    if (msg.conversation.receiverId === userId) {
-      io.emit(msg.conversation.senderId, msg);
-    } else {
-      io.emit(msg.conversation.receiverId, msg);
-    }
-  });
+  messagesSocket(socket, userId);
 
   socket.on('disconnect', () => {
     console.log(`User disconnected ${username}`);
-    if (userId) {
-      userOffline(userId);
-    }
   });
 });
 
@@ -76,7 +65,6 @@ export const s3 = new S3Client({
   },
 });
 
-
 server.listen(PORT, () => {
-  console.log(`SERVER RUNNING... PORT: ${PORT}`);
+  console.log(`🚀 SERVER RUNNING... PORT: ${PORT}`);
 });

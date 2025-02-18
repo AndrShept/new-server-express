@@ -24,6 +24,7 @@ export const createDungeonPartyHeroDTOSchema = z.object({
 });
 export const deleteDungeonPartyHeroDTO = z.object({
   memberId: z.string(),
+  dungeonSessionId: z.string(),
 });
 
 export const deleteDungeonPartyHeroDTOSchema = z.object({
