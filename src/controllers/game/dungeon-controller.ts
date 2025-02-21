@@ -13,7 +13,7 @@ import { createHeroTile } from '../../bin/createHeroTile';
 import {
   socketSendSysMessageToClient,
   socketUpdateTile,
-} from '../../sockets/dungeon';
+} from '../../sockets/main-socket';
 import { SysMessageType } from '../../types';
 
 export const DungeonController = {
@@ -153,6 +153,7 @@ export const DungeonController = {
     res: Response,
     next: NextFunction
   ) => {
+    const socket = req.app.locals.socket;
     try {
       const heroId = req.hero.id;
       const heroName = req.hero.name;
@@ -205,6 +206,7 @@ export const DungeonController = {
           },
         });
 
+        socket.leave(dungeonSessionId);
         socketSendSysMessageToClient(dungeonSessionId, {
           message: `${heroName} leave the dungeon session`,
           type: SysMessageType.INFO,

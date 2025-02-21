@@ -1,3 +1,7 @@
+
+
+
+
 import { Tile } from '@prisma/client';
 import { io } from '../server';
 import { ISysMessages } from '../types';
@@ -6,7 +10,7 @@ export const socketUpdateTile = (dungeonSessionId: string, tile: Tile[]) => {
   io.in(dungeonSessionId).emit(`update-tile-${dungeonSessionId}`, tile);
 };
 export const socketKickParty = (heroId: string) => {
-  io.emit(`party-kick-${heroId}`,heroId )
+  io.emit(`party-kick-${heroId}`, heroId);
 };
 export const socketMoveHero = (
   dungeonSessionId: string,
@@ -22,7 +26,7 @@ export const socketSendSysMessageToClient = <T>(
   roomId: string,
   messageData: ISysMessages<T>
 ) => {
-  io.to(roomId).emit(`sys-msg-${roomId}`, {
+  io.in(roomId).emit(`sys-msg-${roomId}`, {
     ...messageData,
     createdAt: messageData.createdAt ?? Date.now(),
   });
@@ -35,4 +39,8 @@ export const socketSendSysMessageToHero = <T>(
     ...messageData,
     createdAt: messageData.createdAt ?? Date.now(),
   });
+};
+
+export const socketRefetchData = (heroId:string) => {
+  io.emit(`refetch-data-${heroId}`, true);
 };

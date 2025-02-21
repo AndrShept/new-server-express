@@ -15,12 +15,12 @@ import { userOffline } from './bin/utils';
 import { S3Client } from '@aws-sdk/client-s3';
 import { databaseErrorHandler } from './middleware/databaseErrorHandler';
 import { messagesSocket } from './bin/messages-socket';
+dotenv.config();
 
 const app = express();
 const server = http.createServer(app);
 const PORT = process.env.PORT || 3000;
 
-dotenv.config();
 app.use(cors());
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
@@ -44,9 +44,12 @@ io.on('connection', async (socket: Socket) => {
   const userId = socket.handshake.auth.userId;
   const username = socket.handshake.headers.username as string;
   console.log(`A user connected ${username}`);
-
-  app.locals.socket = socket;
+  app.use((req, res, next) => {
+    req.ioSocket = socket;
+    next();
+  });
   const hero = await getHeroWithModifiers(username);
+
   if (hero) {
     game(username, socket, hero);
   }

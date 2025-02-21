@@ -8,13 +8,14 @@ import {
 } from '../../dto/dungeon-party';
 import {
   socketKickParty,
+  socketRefetchData,
   socketSendSysMessageToClient,
   socketSendSysMessageToHero,
   socketUpdateTile,
-} from '../../sockets/dungeon';
-import { SysMessageType } from '../../types';
+} from '../../sockets/main-socket';
+import { GroupInviteResponse, SysMessageType } from '../../types';
 import { io } from '../../server';
-import { inviteHeroToParty } from '../../bin/inviteToParty';
+import { Socket } from 'socket.io';
 
 export const DungeonPartyController = {
   getDungeonParty: async (req: Request, res: Response, next: NextFunction) => {
@@ -97,7 +98,8 @@ export const DungeonPartyController = {
       );
       const selfId = req.hero.id;
       const self = req.hero;
-      const socket = req.app.locals.socket;
+      const socket = req.ioSocket
+
       const dungeonSession = await prisma.dungeonSession.findUnique({
         where: { id: dungeonSessionId },
       });
@@ -150,19 +152,12 @@ export const DungeonPartyController = {
         where: { id: heroId },
       });
       if (!invitedHero) return;
-      socket
-        .timeout(5000)
-        .emit(`invite-party-${invitedHero.id}`, self, async (err, data) => {
-          console.log(data);
-          console.log(err);
-          if (err) {
-           return res.json({
-              success: false,
-              message: `тупіт жоско ${invitedHero?.name} to party`,
-              data: invitedHero,
-            });
-          }
-          if (data?.accepted) {
+      // socket?.emit(
+      //   `invite-party-${invitedHero.id}`,
+      //   self,
+      //   async (data: GroupInviteResponse) => {
+          const data = 'accepted'
+          if (data === 'accepted') {
             const newPartyMembers = await prisma.dungeonParty.create({
               data: {
                 dungeonSessionId,
@@ -172,25 +167,30 @@ export const DungeonPartyController = {
                 member: true,
               },
             });
-
-            socketSendSysMessageToHero(invitedHero?.id, 'refresh');
-          return  res.status(201).json({
+            // socket.join(dungeonSessionId);
+            socketRefetchData(invitedHero.id);
+            return res.status(201).json({
               success: true,
-              message: `You add ${newPartyMembers.member?.name} to party`,
+              message: `${invitedHero.name} has joined the group!`,
               data: newPartyMembers,
             });
           }
-          if (!data?.accepted) {
-          return  res.json({
+          if (data === 'declined') {
+            return res.json({
               success: false,
-              message: `no hero ${invitedHero?.name} to party`,
+              message: `${invitedHero.name} has declined the group invitation.`,
               data: invitedHero,
             });
           }
-
-        });
-
-
+          if (data === 'timeout') {
+            return res.json({
+              success: false,
+              message: `${invitedHero?.name} did not respond to the group invitation.`,
+              data: invitedHero,
+            });
+          }
+      //   }
+      // );
     } catch (error) {
       next(error);
     }
@@ -200,6 +200,7 @@ export const DungeonPartyController = {
     res: Response,
     next: NextFunction
   ) => {
+    const socket = req.app.locals.socket;
     try {
       const { memberId, dungeonSessionId } = deleteDungeonPartyHeroDTO.parse(
         req.params
@@ -255,19 +256,21 @@ export const DungeonPartyController = {
         });
         socketUpdateTile(dungeonSessionId, [{ ...memberTile, heroId: null }]);
       }
+      socket.leave(dungeonSessionId);
+      socketRefetchData(memberId);
       socketSendSysMessageToClient(dungeonSessionId, {
         type: SysMessageType.INFO,
-        message: `member ${findMember.member?.name} removed party`,
+        message: `${findMember.member?.name} kicked the party`,
       });
       socketSendSysMessageToHero(memberId, {
         type: SysMessageType.INFO,
-        message: `You kicked from party  party`,
+        message: `You kicked from party`,
       });
       socketKickParty(memberId);
 
       res.status(201).json({
         success: true,
-        message: `member ${findMember.member?.name} removed party`,
+        message: `${findMember.member?.name} kicked the party`,
         data: findMember,
       });
     } catch (error) {

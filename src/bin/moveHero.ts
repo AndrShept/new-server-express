@@ -1,7 +1,7 @@
 import { Socket } from 'socket.io';
 import { prisma } from '../utils/prisma';
 import { Hero } from '@prisma/client';
-import { socketMoveHero, socketSendSysMessageToHero } from '../sockets/dungeon';
+import { socketMoveHero, socketSendSysMessageToHero } from '../sockets/main-socket';
 import { SysMessageType } from '../types';
 
 export const moveHero = (socket: Socket, hero: Hero) => {

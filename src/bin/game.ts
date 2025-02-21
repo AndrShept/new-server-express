@@ -3,7 +3,7 @@ import { heroRegeneration } from './heroRegeneration';
 import { initDungeon } from './initDungeon';
 import { moveHero } from './moveHero';
 import { HeroWithModifier } from '../types';
-import {  inviteToParty } from './inviteToParty';
+import { socketJoinRoom } from '../sockets/socketJoinRoom';
 
 export const game = async (
   username: string,
@@ -13,5 +13,5 @@ export const game = async (
   heroRegeneration(username, socket, hero);
   initDungeon(socket, hero);
   moveHero(socket, hero);
-  inviteToParty(socket, hero)
+  socketJoinRoom(socket);
 };
